@@ -996,6 +996,94 @@ private:
       upload_path = path;
     }
   };
+
+  bool requestV2(String message, const std::string &url, RequestOption const &opt, String *reply)
+  {
+    Serial.print("Tweet to be published: ");
+    Serial.println(message);
+    if (reply) *reply = "";
+    if (opt.method == RequestOption::GET) {
+        if (opt.upload_path.empty()) {
+          String host, path;
+          int port = 0;
+          {
+          URL l(url);
+          host = l.host().c_str();
+          path = l.path().c_str();
+          port = l.port();
+          }
+		WiFiClientSecure client;
+		client.setInsecure();
+		if (client.connected()) { client.flush(); client.stop(); }
+		client.setTimeout(TWI_TIMEOUT);
+        if (client.connect(host.c_str(), port)) {   
+          client.print("GET " + path );
+          client.print(opt.right_str.c_str());
+          client.println(" HTTP/1.1");
+          client.println("Host: " + host);
+          client.println("User-Agent: ESP8266");
+          client.println("Accept: */*");
+          client.println("Connection: close");
+          client.println("Content-Type: application/x-www-form-urlencoded;");
+          client.print("Authorization: OAuth");
+          client.println(opt.get_begin);
+          client.println("");
+		  
+          while (client.connected()) {
+            String header = client.readStringUntil('\n');
+            if (header == "\r") break; // headers received
+          }
+		      *reply = client.readString();
+          if (client.available()) { client.flush(); client.stop(); }
+            return true;
+          }
+      }
+    } else if (opt.method == RequestOption::POST) {
+      if (reply) *reply = "";;
+      if (opt.upload_path.empty()) {
+        String host, path;
+        int port = 0;
+        {
+          URL l(url);
+          host = l.host().c_str();
+          path = l.path().c_str();
+          port = l.port();
+        }
+		WiFiClientSecure client;
+		client.setInsecure();
+		if (client.connected()) { client.flush(); client.stop(); }
+		client.setTimeout(TWI_TIMEOUT);
+        if (client.connect(host.c_str(), port)) {
+          int len = opt.post_end - opt.post_begin;
+          client.println("POST " + path + " HTTP/1.1");
+          client.println("Host: " + host);
+          client.print("Authorization: OAuth ");
+          client.write((uint8_t const *)opt.post_begin, len);
+          client.println();
+          client.println("User-Agent: ESP8266");
+          client.println("Connection: keep-alive");
+          client.println("Content-Type: application/json");
+          client.println("Accept: */*");
+          client.println("Accept-Encoding: gzip, deflate, br");
+          client.print("Content-Length: ");
+          String body = "{\"text\": \"";
+          body.concat(message);
+          body.concat("\"}");
+          client.println(body.length());
+          client.println();
+          client.println(body);
+          String s = client.readString();
+          *reply = s;
+          if (client.available()) { client.flush(); client.stop(); }
+          return true;
+        }
+      } else {
+        // not implemented
+      }
+    }
+    return false;
+  }
+
   bool request(const std::string &url, RequestOption const &opt, String *reply)
   {
     if (reply) *reply = "";
@@ -1013,19 +1101,7 @@ private:
 		client.setInsecure();
 		if (client.connected()) { client.flush(); client.stop(); }
 		client.setTimeout(TWI_TIMEOUT);
-        if (client.connect(host.c_str(), port)) {   
-//          Serial.print("GET " + path );
-//          Serial.print(opt.right_str.c_str());
-//          Serial.println(" HTTP/1.1");
-//          Serial.println("Host: " + host);
-//          Serial.println("User-Agent: ESP8266");
-//          Serial.println("Accept: */*");
-//          Serial.println("Connection: close");
-//          Serial.println("Content-Type: application/x-www-form-urlencoded;");
-//          Serial.print("Authorization: OAuth");
-//          Serial.println(opt.get_begin);
-//          Serial.println("");
-
+        if (client.connect(host.c_str(), port)) {
           client.print("GET " + path );
           client.print(opt.right_str.c_str());
           client.println(" HTTP/1.1");
@@ -1037,7 +1113,6 @@ private:
           client.print("Authorization: OAuth");
           client.println(opt.get_begin);
           client.println("");
-		  
           while (client.connected()) {
             String header = client.readStringUntil('\n');
             if (header == "\r") break; // headers received
@@ -1132,12 +1207,21 @@ public:
     timeClient->begin();
     timeClient->forceUpdate();
   }
+
+  String getTimeStamp() {
+    timeClient->update();
+    return timeClient->getFormattedTime();
+  }
+
+  unsigned long getEpoch() {
+    timeClient->update();
+    return timeClient->getEpochTime();
+  }
   
   bool tweet(std::string message, const std::vector<std::string> *media_ids = nullptr)
   {
     timeClient->update();
     time_t currentTime = (time_t) timeClient->getEpochTime();
-//    Serial.print("Epoch: "); Serial.println(currentTime);
     
     if (message.empty()) {
       return false;
@@ -1145,31 +1229,12 @@ public:
 
     // std::string url = "https://twitter-api.free.beeceptor.com/2/tweets";
     std::string url = "https://api.twitter.com/2/tweets";
-
-    // url += "?status=";
-    // url += misc::url_encode(message);
-    // if (media_ids && !media_ids->empty()) {
-    //   std::string ids;
-    //   for (std::string const &media_id : *media_ids) {
-    //     if (!media_id.empty()) {
-    //       if (!ids.empty()) {
-    //         ids += ',';
-    //       }
-    //       ids += media_id;
-    //     }
-    //   }
-    //   if (!ids.empty()) {
-    //     url += "&media_ids=";
-    //     url += ids;
-    //   }
-    // }
-
     oauth::Request oauth_req = oauth::sign(url.c_str(), oauth::POST, keys(), currentTime);
     String res;
     RequestOption opt;
     char const *p = oauth_req.post.c_str();
     opt.set_post_data(p, p + oauth_req.post.size());
-    boolean status = request(oauth_req.url, opt, &res);
+    boolean status = requestV2(message.c_str(), oauth_req.url, opt, &res);
     Serial.println(res);
     return status;
   }
