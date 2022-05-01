@@ -1,4 +1,13 @@
-# TwitterWebAPI
+# ESP8266 Twiiter client (Experimental, Forked from [TwitterWebAPI](https://github.com/debsahu/TwitterWebAPI))
+
+Existing TwitterWebAPI only uses Twitter API v1 which is not a default offering from twitter as of April 2022. So started enhancing this codebase to work with V2 endpoints.
+TODO:
+- [] Create Tweet
+- [] Search User
+- [] Search Twitter
+- [] Modify Examples for V2
+
+# About TwitterWebAPI
 
 An Arduino library to talk to Twitter using [Twitter Web API](https://dev.twitter.com/overview/api) made for ESP8266. This is based on a sketch posted [here](https://github.com/soramimi/ESP8266Tweet). There are other approaches like using a bearer token [arduino-twitter-api](https://github.com/witnessmenow/arduino-twitter-api), but there are limitations in terms of not being able to send tweet. This can both search/read and post tweets.
 

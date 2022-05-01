@@ -1,11 +1,11 @@
 {
-  "name": "TwitterWebAPI",
+  "name": "esp8266-twitter",
   "keywords": "twitter",
   "description": "Library for talking to Twitter on ESP8266.",
   "repository":
   {
     "type": "git",
-    "url": "https://github.com/debsahu/TwitterWebAPI.git"
+    "url": "https://github.com/krishnakumar4a4/esp8266-twitter.git"
   },
   "frameworks": "arduino",
   "platforms": "espressif8266",
