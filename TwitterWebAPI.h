@@ -590,7 +590,7 @@ public:
     if (http_method == POST) {
       Request req;
 //      req.timevalue = currentTime;
-      req.post = oauth::build_url(vec, 1);
+      req.post = oauth::build_url_with_quotes(vec, 1);
       req.url = vec.at(0);
       return req;
     } else if (http_method == GET) {
@@ -774,6 +774,32 @@ private:
           std::string name(p, e);
           std::string value = e + 1;
           s = name + '=' + misc::url_encode(value);
+        } else {
+          s += '=';
+        }
+      }
+      if (!query.empty()) {
+        query += sep;
+      }
+      query += s;
+    }
+    return query;
+  }
+
+  // For adding double quotes for Oauth values as per twitter def
+  static std::string build_url_with_quotes(const std::vector<std::string> &argv, int start)
+  {
+    const char sep = ',';
+    std::string query;
+    for (size_t i = start; i < argv.size(); i++) {
+      std::string s = argv[i];
+      if (i > 0) {
+        char const *p = s.c_str();
+        char const *e = strchr(p, '=');
+        if (e) {
+          std::string name(p, e);
+          std::string value = e + 1;
+          s = name + '=' + '"' + misc::url_encode(value) + '"';
         } else {
           s += '=';
         }
@@ -1016,12 +1042,12 @@ private:
             String header = client.readStringUntil('\n');
             if (header == "\r") break; // headers received
           }
-		  *reply = client.readString();
+		      *reply = client.readString();
           //String body = client.readString();
-		  //*reply = body;
-		  if (client.available()) { client.flush(); client.stop(); }
-          return true;
-        }
+		      //*reply = body;
+          if (client.available()) { client.flush(); client.stop(); }
+            return true;
+          }
       }
     } else if (opt.method == RequestOption::POST) {
       if (reply) *reply = "";;
@@ -1042,13 +1068,21 @@ private:
           int len = opt.post_end - opt.post_begin;
           client.println("POST " + path + " HTTP/1.1");
           client.println("Host: " + host);
-          client.println("User-Agent: ESP8266");
-          client.println("Connection: close");
-          client.println("Content-Type: application/x-www-form-urlencoded;");
-          client.print("Content-Length: ");
-          client.println(len);
-          client.println();
+          client.print("Authorization: OAuth ");
           client.write((uint8_t const *)opt.post_begin, len);
+          client.println();
+          client.println("User-Agent: ESP8266");
+          client.println("Connection: keep-alive");
+          client.println("Content-Type: application/json");
+          client.println("Accept: */*");
+          client.println("Accept-Encoding: gzip, deflate, br");
+          String body = "{\"text\": \"Hello World! 4\"}";
+          client.print("Content-Length: ");
+          client.println(body.length());
+          client.println();
+          client.println(body);
+          // client.write((uint8_t const *)opt.post_begin, len);
+          // client.write("test");
           String s = client.readString();
           *reply = s;
           //Serial.println("Tweeted");
@@ -1109,32 +1143,35 @@ public:
       return false;
     }
 
-    std::string url = "https://api.twitter.com/1.1/statuses/update.json";
+    // std::string url = "https://twitter-api.free.beeceptor.com/2/tweets";
+    std::string url = "https://api.twitter.com/2/tweets";
 
-    url += "?status=";
-    url += misc::url_encode(message);
-    if (media_ids && !media_ids->empty()) {
-      std::string ids;
-      for (std::string const &media_id : *media_ids) {
-        if (!media_id.empty()) {
-          if (!ids.empty()) {
-            ids += ',';
-          }
-          ids += media_id;
-        }
-      }
-      if (!ids.empty()) {
-        url += "&media_ids=";
-        url += ids;
-      }
-    }
+    // url += "?status=";
+    // url += misc::url_encode(message);
+    // if (media_ids && !media_ids->empty()) {
+    //   std::string ids;
+    //   for (std::string const &media_id : *media_ids) {
+    //     if (!media_id.empty()) {
+    //       if (!ids.empty()) {
+    //         ids += ',';
+    //       }
+    //       ids += media_id;
+    //     }
+    //   }
+    //   if (!ids.empty()) {
+    //     url += "&media_ids=";
+    //     url += ids;
+    //   }
+    // }
 
     oauth::Request oauth_req = oauth::sign(url.c_str(), oauth::POST, keys(), currentTime);
     String res;
     RequestOption opt;
     char const *p = oauth_req.post.c_str();
     opt.set_post_data(p, p + oauth_req.post.size());
-    return request(oauth_req.url, opt, &res);
+    boolean status = request(oauth_req.url, opt, &res);
+    Serial.println(res);
+    return status;
   }
 
   String searchTwitter(std::string message)
