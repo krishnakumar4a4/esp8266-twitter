@@ -842,7 +842,6 @@ public:
     if (http_method == POST)
     {
       Request req;
-      //      req.timevalue = currentTime;
       req.post = oauth::build_url_with_quotes(vec, 1);
       req.url = vec.at(0);
       return req;
@@ -850,7 +849,6 @@ public:
     else if (http_method == GET)
     {
       Request req;
-      //      req.timevalue = currentTime;
       req.getdata = oauth::build_oauth_auth(vec, 1);
       req.right = oauth::split_url_right(url);
       req.url = vec.at(0);
@@ -1037,7 +1035,11 @@ private:
   static std::string split_url_right(const char *url)
   {
     std::string u = std::string(url);
-    std::string rightstr = u.substr(u.find("?"), u.length());
+    std::size_t pos = u.find("?");
+    if (pos == std::string::npos) {
+      return "";
+    }
+    std::string rightstr = u.substr(pos, u.length());
     return rightstr;
   }
   static std::string build_url(const std::vector<std::string> &argv, int start)
@@ -1312,8 +1314,6 @@ private:
       get_begin = begin;
       get_end = end;
       len = get_end - get_begin;
-      // Serial.print("LenFn: ");
-      // Serial.println(len);
       method = GET;
       right_str = std::string(right);
     }
@@ -1325,7 +1325,7 @@ private:
 
   bool requestV2(String message, const std::string &url, RequestOption const &opt, String *reply)
   {
-    Serial.print("Tweet to be published: ");
+    Serial.print("message for tweet: ");
     Serial.println(message);
     if (reply)
       *reply = "";
@@ -1358,11 +1358,12 @@ private:
           client.println("User-Agent: ESP8266");
           client.println("Accept: */*");
           client.println("Connection: close");
-          client.println("Content-Type: application/x-www-form-urlencoded;");
+          client.println("Content-Type: application/json");
+          client.println("Accept-Encoding: gzip, deflate, br");
           client.print("Authorization: OAuth");
           client.println(opt.get_begin);
-          client.println("");
-
+          client.println();
+          
           while (client.connected())
           {
             String header = client.readStringUntil('\n');
@@ -1640,11 +1641,11 @@ public:
       return "Error with user search term!";
     }
 
-    std::string url = "https://api.twitter.com/1.1/search/tweets.json";
+    std::string url = "https://api.twitter.com/2/tweets/search/recent";
 
-    url += "?q=";
+    url += "?query=";
     url += misc::url_encode(message);
-    url += "&result_type=recent&count=1";
+    // url += "&result_type=recent&count=1";
 
     oauth::Request oauth_req = oauth::sign(url.c_str(), oauth::GET, keys(), currentTime);
     String res;
@@ -1652,7 +1653,7 @@ public:
     char const *p = oauth_req.getdata.c_str();
     char const *r = oauth_req.right.c_str();
     opt.set_get_data(p, p + oauth_req.getdata.size(), r);
-    if (request(oauth_req.url, opt, &res))
+    if (requestV2("", oauth_req.url, opt, &res))
     {
       return res;
     }
@@ -1673,11 +1674,8 @@ public:
       return "Error with search term!";
     }
 
-    std::string url = "https://api.twitter.com/1.1/users/search.json";
-
-    url += "?q=";
+    std::string url = "https://api.twitter.com/2/users/by/username/";
     url += misc::url_encode(message);
-    url += "&page=1&count=1";
 
     oauth::Request oauth_req = oauth::sign(url.c_str(), oauth::GET, keys(), currentTime);
     String res;
@@ -1685,7 +1683,7 @@ public:
     char const *p = oauth_req.getdata.c_str();
     char const *r = oauth_req.right.c_str();
     opt.set_get_data(p, p + oauth_req.getdata.size(), r);
-    if (request(oauth_req.url, opt, &res))
+    if (requestV2("",oauth_req.url, opt, &res))
     {
       return res;
     }
