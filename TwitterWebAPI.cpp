@@ -24,7 +24,7 @@
           client.flush();
           client.stop();
         }
-        client.setTimeout(TWI_TIMEOUT * 10);
+        client.setTimeout(TWI_TIMEOUT);
         if (client.connect(host.c_str(), port))
         {
           client.println("GET " + path + opt.right_str.c_str() + " HTTP/1.1");
@@ -93,12 +93,9 @@
           client.println("Accept: */*");
           // client.println("Accept-Encoding: gzip, deflate, br");
           client.print("Content-Length: ");
-          String body = "{\"text\": \"";
-          body.concat(message);
-          body.concat("\"}");
-          client.println(body.length());
+          client.println(message.length());
           client.println();
-          client.println(body);
+          client.println(message);
           String s = client.readString();
           *reply = s;
           if (client.available())
@@ -179,7 +176,10 @@
     RequestOption opt;
     char const *p = oauth_req.post.c_str();
     opt.set_post_data(p, p + oauth_req.post.size());
-    boolean status = requestV2(message.c_str(), oauth_req.url, opt, &res);
+    String body = "{\"text\": \"";
+    body.concat(message.c_str());
+    body.concat("\"}");
+    boolean status = requestV2(body.c_str(), oauth_req.url, opt, &res);
     Serial.println(res);
     return status;
   }
