@@ -3,8 +3,6 @@
 
   bool TwitterClient::requestV2(String message, const std::string &url, TwitterClient::RequestOption const &opt, String *reply)
   {
-    Serial.print("Tweet to be published: ");
-    Serial.println(message);
     if (reply)
       *reply = "";
     if (opt.method == RequestOption::GET)
@@ -43,12 +41,8 @@
           client.println();
           while (client.connected())
           {
-            Serial.println("inside client.connected()");
             String header = client.readStringUntil('\n');
-            Serial.print("header: ");
-            Serial.println(header);
             if (header == "\r") {
-              Serial.print("received: \r breaking");
               break; // headers received
             }
           }
@@ -257,4 +251,39 @@
     {
       return "Error";
     }
+  }
+
+  TwitterClient::Response TwitterClient::getV2(std::string pathWithParams) {
+    timeClient->update();
+    time_t currentTime = (time_t)timeClient->getEpochTime();
+    std::string url = "https://api.twitter.com/2";
+    url += pathWithParams;
+    oauth::Request oauth_req = oauth::sign(url.c_str(), oauth::GET, keys(), currentTime);
+    String res;
+    RequestOption opt;
+    char const *p = oauth_req.getdata.c_str();
+    char const *r = oauth_req.right.c_str();
+    opt.set_get_data(p, p + oauth_req.getdata.size(), r);
+    bool status = requestV2("",oauth_req.url, opt, &res);
+    Response resp;
+    resp.isSuccessful = status;
+    resp.respBodyString = std::string(res.c_str());
+    return resp;
+  }
+
+  TwitterClient::Response TwitterClient::postV2(std::string pathWithParams, std::string bodyString) {
+    timeClient->update();
+    time_t currentTime = (time_t)timeClient->getEpochTime();
+    std::string url = "https://api.twitter.com/2";
+    url += pathWithParams;
+    oauth::Request oauth_req = oauth::sign(url.c_str(), oauth::POST, keys(), currentTime);
+    String res;
+    RequestOption opt;
+    char const *p = oauth_req.post.c_str();
+    opt.set_post_data(p, p + oauth_req.post.size());
+    boolean status = requestV2(bodyString.c_str(), oauth_req.url, opt, &res);
+    Response resp;
+    resp.isSuccessful = status;
+    resp.respBodyString = std::string(res.c_str());
+    return resp;
   }

@@ -827,7 +827,6 @@ public:
     std::string post;
     std::string getdata;
     std::string right;
-    //    time_t timevalue;
   };
   static Request sign(const char *url, http_method_t http_method, Keys const &keys, time_t currentTime)
   {
@@ -839,7 +838,6 @@ public:
     if (http_method == POST)
     {
       Request req;
-      //      req.timevalue = currentTime;
       req.post = oauth::build_url_with_quotes(vec, 1);
       Serial.print("req.post: ");
       Serial.println(req.post.c_str());

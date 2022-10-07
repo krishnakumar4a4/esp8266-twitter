@@ -66,6 +66,11 @@ private:
   bool requestV2(String message, const std::string &url, RequestOption const &opt, String *reply);
 
 public:
+  struct Response {
+    bool isSuccessful;
+    std::string respBodyString;
+  };
+
   TwitterClient(){};
   TwitterClient(NTPClient &timeClient, std::string const &consumer_key, std::string const &consumer_sec, std::string const &accesstoken, std::string const &accesstoken_sec);
   void startNTP();
@@ -76,4 +81,6 @@ public:
   bool tweet(std::string message, const std::vector<std::string> *media_ids = nullptr);
   String searchTwitter(std::string message);
   String searchUser(std::string message);
+  Response getV2(std::string pathWithParams);
+  Response postV2(std::string pathWithParams, std::string bodyString);
 };
