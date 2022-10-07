@@ -11,7 +11,7 @@ TODO:
 - [x] Search Twitter
 - [x] Generic api for making V2 GET requests
 - [x] Generic api for making V2 POST requests
-- [ ] Modify Examples for V2
+- [x] Modify Examples for V2
 
 # About
 
